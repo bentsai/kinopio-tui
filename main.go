@@ -13,6 +13,7 @@ import (
 
 type model struct {
 	spaces []Space
+	cursor int // Which space the cursor is pointing at
 	err    error
 }
 
@@ -37,6 +38,19 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "ctrl+c", "q":
 			return m, tea.Quit
+		case "j":
+			if m.cursor < len(m.spaces)-1 {
+				m.cursor++
+			}
+		case "k":
+			if m.cursor > 0 {
+				m.cursor--
+			}
+		case "enter":
+			// Display the ID of the selected space
+			if m.cursor >= 0 && m.cursor < len(m.spaces) {
+				fmt.Printf("Selected Space ID: %s\n", m.spaces[m.cursor].ID)
+			}
 		}
 	}
 	return m, nil
@@ -52,10 +66,14 @@ func (m model) View() string {
 
 	var b strings.Builder
 	b.WriteString("Spaces:\n\n")
-	for _, space := range m.spaces {
-		b.WriteString(fmt.Sprintf("ID: %s\nName: %s\n\n", space.ID, space.Name))
+	for i, space := range m.spaces {
+		cursor := " " // No cursor
+		if m.cursor == i {
+			cursor = ">" // Cursor
+		}
+		b.WriteString(fmt.Sprintf("%s %s\n", cursor, space.Name))
 	}
-	b.WriteString("Press q to quit.")
+	b.WriteString("\nUse j/k to navigate and Enter to select. Press q to quit.")
 	return b.String()
 }
 
@@ -72,13 +90,9 @@ func fetchSpaces() tea.Cmd {
 			return fmt.Errorf("Error creating request: %v", err)
 		}
 
-		// Set the Authorization header without the "Bearer" prefix
 		req.Header.Set("Authorization", apiKey)
-
-		// Set the Content-Type header to match curl
 		req.Header.Set("Content-Type", "application/json")
 
-		// Log the request details
 		logRequest(req)
 
 		resp, err := client.Do(req)
