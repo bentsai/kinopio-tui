@@ -80,6 +80,15 @@ func fetchSpaces() tea.Cmd {
 		}
 		defer resp.Body.Close()
 
+		if resp.StatusCode != http.StatusOK {
+			return fmt.Errorf("failed to fetch spaces: %s", resp.Status)
+		}
+
+		contentType := resp.Header.Get("Content-Type")
+		if !strings.Contains(contentType, "application/json") {
+			return fmt.Errorf("unexpected content type: %s", contentType)
+		}
+
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return err
