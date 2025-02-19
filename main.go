@@ -44,7 +44,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m model) View() string {
 	if m.err != nil {
-		return fmt.Sprintf("Error fetching spaces: %v\nPress q to quit.", m.err)
+		return fmt.Sprintf("Error fetching spaces:\n%v\n\nPress q to quit.", m.err)
 	}
 	if len(m.spaces) == 0 {
 		return "Loading spaces...\nPress q to quit."
@@ -69,37 +69,59 @@ func fetchSpaces() tea.Cmd {
 		client := &http.Client{}
 		req, err := http.NewRequest("GET", "https://api.kinopio.club/user/spaces", nil)
 		if err != nil {
-			return err
+			return fmt.Errorf("Error creating request: %v", err)
 		}
 
-		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", apiKey))
+		// Set the Authorization header without the "Bearer" prefix
+		req.Header.Set("Authorization", apiKey)
+
+		// Set the Content-Type header to match curl
+		req.Header.Set("Content-Type", "application/json")
+
+		// Log the request details
+		logRequest(req)
 
 		resp, err := client.Do(req)
 		if err != nil {
-			return err
+			return fmt.Errorf("Error performing request: %v", err)
 		}
 		defer resp.Body.Close()
 
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("Error reading response body: %v", err)
+		}
+
 		if resp.StatusCode != http.StatusOK {
-			return fmt.Errorf("failed to fetch spaces: %s", resp.Status)
+			var errorDetails map[string]interface{}
+			jsonErr := json.Unmarshal(body, &errorDetails)
+			if jsonErr != nil {
+				return fmt.Errorf("Failed to fetch spaces: %s\nResponse body: %s", resp.Status, string(body))
+			}
+			errorDetailsStr, _ := json.MarshalIndent(errorDetails, "", "  ")
+			return fmt.Errorf("Failed to fetch spaces: %s\nError details:\n%s", resp.Status, string(errorDetailsStr))
 		}
 
 		contentType := resp.Header.Get("Content-Type")
 		if !strings.Contains(contentType, "application/json") {
-			return fmt.Errorf("unexpected content type: %s", contentType)
-		}
-
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return err
+			return fmt.Errorf("Unexpected content type: %s", contentType)
 		}
 
 		var spaces []Space
 		if err := json.Unmarshal(body, &spaces); err != nil {
-			return err
+			return fmt.Errorf("Error unmarshaling response: %v", err)
 		}
 
 		return spacesMsg{spaces: spaces}
+	}
+}
+
+func logRequest(req *http.Request) {
+	fmt.Printf("Request Method: %s\n", req.Method)
+	fmt.Printf("Request URL: %s\n", req.URL)
+	fmt.Println("Request Headers:")
+	for k, v := range req.Header {
+		fmt.Printf("  %s: %s\n", k, v)
 	}
 }
 
