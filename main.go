@@ -1,28 +1,34 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
+	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
 
 type model struct {
-	spaces string
+	spaces []Space
 	err    error
 }
 
+type Space struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
 func (m model) Init() tea.Cmd {
-	// Call fetchSpaces when the program starts
-	return tea.Cmd(fetchSpaces)
+	return fetchSpaces()
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case spacesMsg:
-		m.spaces = string(msg)
+		m.spaces = msg.spaces
 		return m, nil
 	case error:
 		m.err = msg
@@ -40,15 +46,24 @@ func (m model) View() string {
 	if m.err != nil {
 		return fmt.Sprintf("Error fetching spaces: %v\nPress q to quit.", m.err)
 	}
-	if m.spaces == "" {
+	if len(m.spaces) == 0 {
 		return "Loading spaces...\nPress q to quit."
 	}
-	return fmt.Sprintf("Spaces:\n%s\nPress q to quit.", m.spaces)
+
+	var b strings.Builder
+	b.WriteString("Spaces:\n\n")
+	for _, space := range m.spaces {
+		b.WriteString(fmt.Sprintf("ID: %s\nName: %s\n\n", space.ID, space.Name))
+	}
+	b.WriteString("Press q to quit.")
+	return b.String()
 }
 
-type spacesMsg string
+type spacesMsg struct {
+	spaces []Space
+}
 
-func fetchSpaces() tea.Msg {
+func fetchSpaces() tea.Cmd {
 	return func() tea.Msg {
 		apiKey := getAPIKey()
 		client := &http.Client{}
@@ -57,7 +72,6 @@ func fetchSpaces() tea.Msg {
 			return err
 		}
 
-		// Set the API key in the request header
 		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", apiKey))
 
 		resp, err := client.Do(req)
@@ -71,7 +85,12 @@ func fetchSpaces() tea.Msg {
 			return err
 		}
 
-		return spacesMsg(body)
+		var spaces []Space
+		if err := json.Unmarshal(body, &spaces); err != nil {
+			return err
+		}
+
+		return spacesMsg{spaces: spaces}
 	}
 }
 
