@@ -67,7 +67,7 @@ func fetchSpaces() tea.Cmd {
 	return func() tea.Msg {
 		apiKey := getAPIKey()
 		client := &http.Client{}
-		req, err := http.NewRequest("GET", "https://api.kinopio.club/spaces", nil)
+		req, err := http.NewRequest("GET", "https://api.kinopio.club/user/spaces", nil)
 		if err != nil {
 			return err
 		}
