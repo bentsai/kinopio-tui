@@ -164,7 +164,7 @@ func main() {
 		list:    l,
 		spinner: sp,
 	}
-	p := tea.NewProgram(m) // Removed tea.WithAltScreen() for debugging
+	p := tea.NewProgram(m, tea.WithAltScreen()) // Use alternate screen buffer to clear screen
 	if _, err := p.Run(); err != nil {
 		fmt.Fprintln(os.Stderr, "Error running program:", err)
 		os.Exit(1)
