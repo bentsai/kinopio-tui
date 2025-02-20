@@ -1,4 +1,4 @@
-module github.com/bentsai/kinopio-cli
+module github.com/bentsai/kinopio-tui
 
 go 1.23.6
 
