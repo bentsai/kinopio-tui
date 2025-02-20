@@ -8,12 +8,15 @@ import (
 	"os"
 
 	"github.com/charmbracelet/bubbles/list"
+	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
 type model struct {
-	list list.Model
-	err  error
+	list    list.Model
+	spinner spinner.Model
+	err     error
+	loading bool // Track loading state
 }
 
 type Card struct {
@@ -27,11 +30,12 @@ type Space struct {
 	Url  string `json:"url"`
 }
 
-func (m model) Init() tea.Cmd {
-	return tea.Batch(fetchSpaces(), tea.ClearScreen)
+func (m *model) Init() tea.Cmd {
+	m.loading = true // Set loading state to true initially
+	return tea.Batch(fetchSpaces(), m.spinner.Tick)
 }
 
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
@@ -41,8 +45,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			items[i] = listItem{space}
 		}
 		m.list.SetItems(items)
+		m.loading = false // Data has been loaded
 	case error:
 		m.err = msg
+		m.loading = false // Stop loading on error
 	case tea.WindowSizeMsg:
 		m.list.SetSize(msg.Width, msg.Height-4) // Adjust for any header/footer
 	case tea.KeyMsg:
@@ -57,6 +63,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
+	if m.loading {
+		var cmd tea.Cmd
+		m.spinner, cmd = m.spinner.Update(msg)
+		cmds = append(cmds, cmd)
+	}
+
 	var cmd tea.Cmd
 	m.list, cmd = m.list.Update(msg)
 	cmds = append(cmds, cmd)
@@ -65,6 +77,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
+	if m.loading {
+		return fmt.Sprintf("\n\n   %s Loading spaces...\n\nPress q to quit.", m.spinner.View())
+	}
 	if m.err != nil {
 		return fmt.Sprintf("Error fetching spaces:\n%v\n\nPress q to quit.", m.err)
 	}
@@ -143,8 +158,13 @@ func main() {
 	l.SetShowStatusBar(false)
 	l.SetFilteringEnabled(false)
 
-	m := model{list: l}
-	p := tea.NewProgram(m, tea.WithAltScreen()) // Use alternate screen buffer
+	sp := spinner.New(spinner.WithSpinner(spinner.Dot))
+
+	m := &model{
+		list:    l,
+		spinner: sp,
+	}
+	p := tea.NewProgram(m) // Removed tea.WithAltScreen() for debugging
 	if _, err := p.Run(); err != nil {
 		fmt.Fprintln(os.Stderr, "Error running program:", err)
 		os.Exit(1)
