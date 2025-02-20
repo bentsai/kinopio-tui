@@ -22,9 +22,9 @@ type Card struct {
 }
 
 type Space struct {
-	ID    string `json:"id"`
-	Name  string `json:"name"`
-	Cards []Card `json:"cards"`
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Url  string `json:"url"`
 }
 
 func (m model) Init() tea.Cmd {
@@ -78,7 +78,7 @@ type listItem struct {
 func (i listItem) FilterValue() string { return i.Space.Name }
 func (i listItem) Title() string       { return i.Space.Name }
 func (i listItem) Description() string {
-	return fmt.Sprintf("%d cards", len(i.Space.Cards))
+	return fmt.Sprintf("https://kinopio.club/%s", i.Space.Url)
 }
 
 type spacesMsg struct {
