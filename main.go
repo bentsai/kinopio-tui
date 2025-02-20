@@ -22,7 +22,7 @@ type Space struct {
 }
 
 func (m model) Init() tea.Cmd {
-	return fetchSpaces()
+	return tea.Batch(fetchSpaces(), tea.ClearScreen)
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -37,6 +37,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.list.SetItems(items)
 	case error:
 		m.err = msg
+	case tea.WindowSizeMsg:
+		m.list.SetSize(msg.Width, msg.Height-4) // Adjust for any header/footer
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c", "q":
@@ -127,16 +129,14 @@ func getAPIKey() string {
 }
 
 func main() {
-	const defaultWidth = 80
-
 	itemDelegate := list.NewDefaultDelegate()
-	l := list.New([]list.Item{}, itemDelegate, defaultWidth, 50)
+	l := list.New([]list.Item{}, itemDelegate, 0, 0) // Start with zero size, we'll adjust it later
 	l.Title = "Spaces"
 	l.SetShowStatusBar(false)
 	l.SetFilteringEnabled(false)
 
 	m := model{list: l}
-	p := tea.NewProgram(m)
+	p := tea.NewProgram(m, tea.WithAltScreen()) // Use alternate screen buffer
 	if _, err := p.Run(); err != nil {
 		fmt.Fprintln(os.Stderr, "Error running program:", err)
 		os.Exit(1)
