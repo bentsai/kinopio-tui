@@ -14,6 +14,8 @@ import (
 type model struct {
 	spaces []Space
 	cursor int // Which space the cursor is pointing at
+	offset int // Offset for the viewport
+	height int // Height of the viewport
 	err    error
 }
 
@@ -42,9 +44,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.cursor < len(m.spaces)-1 {
 				m.cursor++
 			}
+			if m.cursor >= m.offset+m.height {
+				m.offset++
+			}
 		case "k":
 			if m.cursor > 0 {
 				m.cursor--
+			}
+			if m.cursor < m.offset {
+				m.offset--
 			}
 		case "enter":
 			// Display the ID of the selected space
@@ -66,12 +74,14 @@ func (m model) View() string {
 
 	var b strings.Builder
 	b.WriteString("Spaces:\n\n")
-	for i, space := range m.spaces {
+
+	// Display only the spaces within the viewport
+	for i := m.offset; i < len(m.spaces) && i < m.offset+m.height; i++ {
 		cursor := " " // No cursor
 		if m.cursor == i {
 			cursor = ">" // Cursor
 		}
-		b.WriteString(fmt.Sprintf("%s %s\n", cursor, space.Name))
+		b.WriteString(fmt.Sprintf("%s %s\n", cursor, m.spaces[i].Name))
 	}
 	b.WriteString("\nUse j/k to navigate and Enter to select. Press q to quit.")
 	return b.String()
@@ -93,7 +103,7 @@ func fetchSpaces() tea.Cmd {
 		req.Header.Set("Authorization", apiKey)
 		req.Header.Set("Content-Type", "application/json")
 
-		logRequest(req)
+		// logRequest(req)
 
 		resp, err := client.Do(req)
 		if err != nil {
@@ -149,7 +159,10 @@ func getAPIKey() string {
 }
 
 func main() {
-	p := tea.NewProgram(model{})
+	m := model{
+		height: 10, // Set the viewport height to fit your terminal
+	}
+	p := tea.NewProgram(m)
 	if _, err := p.Run(); err != nil {
 		fmt.Fprintln(os.Stderr, "Error running program:", err)
 		os.Exit(1)
