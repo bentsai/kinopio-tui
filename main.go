@@ -16,9 +16,15 @@ type model struct {
 	err  error
 }
 
-type Space struct {
+type Card struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
+}
+
+type Space struct {
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Cards []Card `json:"cards"`
 }
 
 func (m model) Init() tea.Cmd {
@@ -71,7 +77,9 @@ type listItem struct {
 
 func (i listItem) FilterValue() string { return i.Space.Name }
 func (i listItem) Title() string       { return i.Space.Name }
-func (i listItem) Description() string { return "" }
+func (i listItem) Description() string {
+	return fmt.Sprintf("%d cards", len(i.Space.Cards))
+}
 
 type spacesMsg struct {
 	spaces []Space
@@ -83,7 +91,7 @@ func fetchSpaces() tea.Cmd {
 		client := &http.Client{}
 		req, err := http.NewRequest("GET", "https://api.kinopio.club/user/spaces", nil)
 		if err != nil {
-			return fmt.Errorf("Error creating request: %v", err)
+			return fmt.Errorf("error creating request: %v", err)
 		}
 
 		req.Header.Set("Authorization", apiKey)
@@ -91,28 +99,28 @@ func fetchSpaces() tea.Cmd {
 
 		resp, err := client.Do(req)
 		if err != nil {
-			return fmt.Errorf("Error performing request: %v", err)
+			return fmt.Errorf("error performing request: %v", err)
 		}
 		defer resp.Body.Close()
 
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
-			return fmt.Errorf("Error reading response body: %v", err)
+			return fmt.Errorf("error reading response body: %v", err)
 		}
 
 		if resp.StatusCode != http.StatusOK {
 			var errorDetails map[string]interface{}
 			jsonErr := json.Unmarshal(body, &errorDetails)
 			if jsonErr != nil {
-				return fmt.Errorf("Failed to fetch spaces: %s\nResponse body: %s", resp.Status, string(body))
+				return fmt.Errorf("failed to fetch spaces: %s\nResponse body: %s", resp.Status, string(body))
 			}
 			errorDetailsStr, _ := json.MarshalIndent(errorDetails, "", "  ")
-			return fmt.Errorf("Failed to fetch spaces: %s\nError details:\n%s", resp.Status, string(errorDetailsStr))
+			return fmt.Errorf("failed to fetch spaces: %s\nError details:\n%s", resp.Status, string(errorDetailsStr))
 		}
 
 		var spaces []Space
 		if err := json.Unmarshal(body, &spaces); err != nil {
-			return fmt.Errorf("Error unmarshaling response: %v", err)
+			return fmt.Errorf("error unmarshaling response: %v", err)
 		}
 
 		return spacesMsg{spaces: spaces}
