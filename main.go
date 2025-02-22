@@ -13,17 +13,20 @@ import (
 )
 
 type model struct {
-	list        list.Model
-	spinner     spinner.Model
-	err         error
-	loading     bool
-	currentView string  // Track the current view
-	spaces      []Space // Store the list of spaces
+	list          list.Model
+	spinner       spinner.Model
+	err           error
+	loading       bool
+	currentView   string
+	spaces        []Space
+	selectedSpace Space
 }
 
 type Card struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
+	X    int    `json:"x"`
+	Y    int    `json:"y"`
 }
 
 type Box struct {
@@ -58,6 +61,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.list.SetItems(items)
 		m.loading = false
 	case spaceDetailsMsg:
+		m.selectedSpace = msg.Space
 		m.loading = false
 		m.currentView = "details"
 		detailItems := []list.Item{
@@ -80,6 +84,15 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.loading = true
 					return m, fetchSpaceDetails(item.Space.ID)
 				}
+			} else if m.currentView == "details" {
+				if item, ok := m.list.SelectedItem().(detailListItem); ok && item.title == "Cards" {
+					m.currentView = "cards"
+					cardItems := make([]list.Item, len(m.selectedSpace.Cards))
+					for i, card := range m.selectedSpace.Cards {
+						cardItems[i] = cardListItem{card}
+					}
+					m.list.SetItems(cardItems)
+				}
 			}
 		case "h":
 			if m.currentView == "details" {
@@ -89,6 +102,13 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					items[i] = listItem{space}
 				}
 				m.list.SetItems(items)
+			} else if m.currentView == "cards" {
+				m.currentView = "details"
+				detailItems := []list.Item{
+					detailListItem{"Cards", fmt.Sprintf("%d cards", len(m.selectedSpace.Cards))},
+					detailListItem{"Boxes", fmt.Sprintf("%d boxes", len(m.selectedSpace.Boxes))},
+				}
+				m.list.SetItems(detailItems)
 			}
 		}
 	}
@@ -136,6 +156,16 @@ type detailListItem struct {
 func (i detailListItem) FilterValue() string { return i.title }
 func (i detailListItem) Title() string       { return i.title }
 func (i detailListItem) Description() string { return i.description }
+
+type cardListItem struct {
+	Card Card
+}
+
+func (i cardListItem) FilterValue() string { return i.Card.Name }
+func (i cardListItem) Title() string       { return i.Card.Name }
+func (i cardListItem) Description() string {
+	return fmt.Sprintf("(%d, %d)", i.Card.X, i.Card.Y)
+}
 
 type spacesMsg struct {
 	spaces []Space
