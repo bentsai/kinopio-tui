@@ -13,10 +13,12 @@ import (
 )
 
 type model struct {
-	list    list.Model
-	spinner spinner.Model
-	err     error
-	loading bool // Track loading state
+	list          list.Model
+	spinner       spinner.Model
+	err           error
+	loading       bool
+	currentView   string // Track the current view
+	selectedSpace Space  // Store the selected space details
 }
 
 type Card struct {
@@ -24,14 +26,22 @@ type Card struct {
 	Name string `json:"name"`
 }
 
-type Space struct {
+type Box struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
-	Url  string `json:"url"`
+}
+
+type Space struct {
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Url   string `json:"url"`
+	Cards []Card `json:"cards"`
+	Boxes []Box  `json:"boxes"`
 }
 
 func (m *model) Init() tea.Cmd {
-	m.loading = true // Set loading state to true initially
+	m.loading = true
+	m.currentView = "list"
 	return tea.Batch(fetchSpaces(), m.spinner.Tick)
 }
 
@@ -45,20 +55,33 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			items[i] = listItem{space}
 		}
 		m.list.SetItems(items)
-		m.loading = false // Data has been loaded
+		m.loading = false
+	case spaceDetailsMsg:
+		m.selectedSpace = msg.Space
+		m.loading = false
+		m.currentView = "details"
+		detailItems := []list.Item{
+			detailListItem{"Cards", fmt.Sprintf("%d cards", len(msg.Space.Cards))},
+			detailListItem{"Boxes", fmt.Sprintf("%d boxes", len(msg.Space.Boxes))},
+		}
+		m.list.SetItems(detailItems)
 	case error:
 		m.err = msg
-		m.loading = false // Stop loading on error
+		m.loading = false
 	case tea.WindowSizeMsg:
-		m.list.SetSize(msg.Width, msg.Height-4) // Adjust for any header/footer
+		m.list.SetSize(msg.Width, msg.Height-4)
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c", "q":
 			return m, tea.Quit
 		case "enter":
-			// Display the ID of the selected space
-			if item, ok := m.list.SelectedItem().(listItem); ok {
-				fmt.Printf("Selected Space ID: %s\n", item.Space.ID)
+			if m.currentView == "list" {
+				if item, ok := m.list.SelectedItem().(listItem); ok {
+					m.loading = true
+					return m, fetchSpaceDetails(item.Space.ID)
+				}
+			} else if m.currentView == "details" {
+				// Handle Enter key in details view if needed
 			}
 		}
 	}
@@ -78,10 +101,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m model) View() string {
 	if m.loading {
-		return fmt.Sprintf("\n\n   %s Loading spaces...\n\nPress q to quit.", m.spinner.View())
+		return fmt.Sprintf("\n\n   %s Loading...\n\nPress q to quit.", m.spinner.View())
 	}
 	if m.err != nil {
-		return fmt.Sprintf("Error fetching spaces:\n%v\n\nPress q to quit.", m.err)
+		return fmt.Sprintf("Error:\n%v\n\nPress q to quit.", m.err)
 	}
 	return m.list.View()
 }
@@ -90,14 +113,27 @@ type listItem struct {
 	Space Space
 }
 
-func (i listItem) FilterValue() string { return i.Space.Name } // Use Name for filtering
+func (i listItem) FilterValue() string { return i.Space.Name }
 func (i listItem) Title() string       { return i.Space.Name }
 func (i listItem) Description() string {
 	return fmt.Sprintf("https://kinopio.club/%s", i.Space.Url)
 }
 
+type detailListItem struct {
+	title       string
+	description string
+}
+
+func (i detailListItem) FilterValue() string { return i.title }
+func (i detailListItem) Title() string       { return i.title }
+func (i detailListItem) Description() string { return i.description }
+
 type spacesMsg struct {
 	spaces []Space
+}
+
+type spaceDetailsMsg struct {
+	Space Space
 }
 
 func fetchSpaces() tea.Cmd {
@@ -139,6 +175,48 @@ func fetchSpaces() tea.Cmd {
 		}
 
 		return spacesMsg{spaces: spaces}
+	}
+}
+
+func fetchSpaceDetails(spaceID string) tea.Cmd {
+	return func() tea.Msg {
+		apiKey := getAPIKey()
+		client := &http.Client{}
+		req, err := http.NewRequest("GET", fmt.Sprintf("https://api.kinopio.club/space/%s", spaceID), nil)
+		if err != nil {
+			return fmt.Errorf("error creating request: %v", err)
+		}
+
+		req.Header.Set("Authorization", apiKey)
+		req.Header.Set("Content-Type", "application/json")
+
+		resp, err := client.Do(req)
+		if err != nil {
+			return fmt.Errorf("error performing request: %v", err)
+		}
+		defer resp.Body.Close()
+
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("error reading response body: %v", err)
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			var errorDetails map[string]interface{}
+			jsonErr := json.Unmarshal(body, &errorDetails)
+			if jsonErr != nil {
+				return fmt.Errorf("failed to fetch space details: %s\nResponse body: %s", resp.Status, string(body))
+			}
+			errorDetailsStr, _ := json.MarshalIndent(errorDetails, "", "  ")
+			return fmt.Errorf("failed to fetch space details: %s\nError details:\n%s", resp.Status, string(errorDetailsStr))
+		}
+
+		var space Space
+		if err := json.Unmarshal(body, &space); err != nil {
+			return fmt.Errorf("error unmarshaling space details: %v", err)
+		}
+
+		return spaceDetailsMsg{Space: space}
 	}
 }
 
