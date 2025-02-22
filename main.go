@@ -9,17 +9,20 @@ import (
 
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/spinner"
+	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
 type model struct {
 	list          list.Model
 	spinner       spinner.Model
+	cardTable     table.Model
 	err           error
 	loading       bool
 	currentView   string
 	spaces        []Space
 	selectedSpace Space
+	selectedCard  Card
 }
 
 type Card struct {
@@ -93,6 +96,12 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 					m.list.SetItems(cardItems)
 				}
+			} else if m.currentView == "cards" {
+				if item, ok := m.list.SelectedItem().(cardListItem); ok {
+					m.selectedCard = item.Card
+					m.currentView = "cardDetails"
+					return m, m.showCardDetails()
+				}
 			}
 		case "b":
 			if m.currentView == "details" {
@@ -109,6 +118,13 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					detailListItem{"Boxes", fmt.Sprintf("%d boxes", len(m.selectedSpace.Boxes))},
 				}
 				m.list.SetItems(detailItems)
+			} else if m.currentView == "cardDetails" {
+				m.currentView = "cards"
+				cardItems := make([]list.Item, len(m.selectedSpace.Cards))
+				for i, card := range m.selectedSpace.Cards {
+					cardItems[i] = cardListItem{card}
+				}
+				m.list.SetItems(cardItems)
 			}
 		}
 	}
@@ -126,12 +142,38 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-func (m model) View() string {
+func (m *model) showCardDetails() tea.Cmd {
+	columns := []table.Column{
+		{Title: "Field", Width: 10},
+		{Title: "Value", Width: 30},
+	}
+
+	rows := []table.Row{
+		{"ID", m.selectedCard.ID},
+		{"Name", m.selectedCard.Name},
+		{"X", fmt.Sprintf("%d", m.selectedCard.X)},
+		{"Y", fmt.Sprintf("%d", m.selectedCard.Y)},
+	}
+
+	m.cardTable = table.New(
+		table.WithColumns(columns),
+		table.WithRows(rows),
+		table.WithFocused(true),
+	)
+
+	return nil
+}
+
+func (m *model) View() string {
 	if m.loading {
 		return fmt.Sprintf("\n\n   %s Loading...\n\nPress q to quit.", m.spinner.View())
 	}
 	if m.err != nil {
 		return fmt.Sprintf("Error:\n%v\n\nPress q to quit.", m.err)
+	}
+
+	if m.currentView == "cardDetails" {
+		return m.cardTable.View() + "\nPress b to go back."
 	}
 
 	helpText := "\nPress Enter to view details, b to go back, q to quit."
