@@ -94,7 +94,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.list.SetItems(cardItems)
 				}
 			}
-		case "esc":
+		case "b":
 			if m.currentView == "details" {
 				m.currentView = "list"
 				items := make([]list.Item, len(m.spaces))
@@ -134,7 +134,7 @@ func (m model) View() string {
 		return fmt.Sprintf("Error:\n%v\n\nPress q to quit.", m.err)
 	}
 
-	helpText := "\nPress Enter to view details, Esc to go back, q to quit."
+	helpText := "\nPress Enter to view details, b to go back, q to quit."
 	return m.list.View() + helpText
 }
 
