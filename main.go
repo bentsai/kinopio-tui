@@ -13,12 +13,12 @@ import (
 )
 
 type model struct {
-	list          list.Model
-	spinner       spinner.Model
-	err           error
-	loading       bool
-	currentView   string // Track the current view
-	selectedSpace Space  // Store the selected space details
+	list        list.Model
+	spinner     spinner.Model
+	err         error
+	loading     bool
+	currentView string  // Track the current view
+	spaces      []Space // Store the list of spaces
 }
 
 type Card struct {
@@ -50,6 +50,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case spacesMsg:
+		m.spaces = msg.spaces
 		items := make([]list.Item, len(msg.spaces))
 		for i, space := range msg.spaces {
 			items[i] = listItem{space}
@@ -57,7 +58,6 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.list.SetItems(items)
 		m.loading = false
 	case spaceDetailsMsg:
-		m.selectedSpace = msg.Space
 		m.loading = false
 		m.currentView = "details"
 		detailItems := []list.Item{
@@ -80,8 +80,15 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.loading = true
 					return m, fetchSpaceDetails(item.Space.ID)
 				}
-			} else if m.currentView == "details" {
-				// Handle Enter key in details view if needed
+			}
+		case "h":
+			if m.currentView == "details" {
+				m.currentView = "list"
+				items := make([]list.Item, len(m.spaces))
+				for i, space := range m.spaces {
+					items[i] = listItem{space}
+				}
+				m.list.SetItems(items)
 			}
 		}
 	}
@@ -106,7 +113,9 @@ func (m model) View() string {
 	if m.err != nil {
 		return fmt.Sprintf("Error:\n%v\n\nPress q to quit.", m.err)
 	}
-	return m.list.View()
+
+	helpText := "\nPress Enter to view details, h to go back, q to quit."
+	return m.list.View() + helpText
 }
 
 type listItem struct {
