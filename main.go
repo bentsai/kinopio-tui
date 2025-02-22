@@ -11,6 +11,7 @@ import (
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 type model struct {
@@ -135,6 +136,12 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 	}
 
+	if m.currentView == "cardDetails" {
+		var cmd tea.Cmd
+		m.cardTable, cmd = m.cardTable.Update(msg)
+		cmds = append(cmds, cmd)
+	}
+
 	var cmd tea.Cmd
 	m.list, cmd = m.list.Update(msg)
 	cmds = append(cmds, cmd)
@@ -159,7 +166,21 @@ func (m *model) showCardDetails() tea.Cmd {
 		table.WithColumns(columns),
 		table.WithRows(rows),
 		table.WithFocused(true),
+		table.WithHeight(6),
 	)
+
+	// Apply styles
+	s := table.DefaultStyles()
+	s.Header = s.Header.
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderForeground(lipgloss.Color("240")).
+		BorderBottom(true).
+		Bold(false)
+	s.Selected = s.Selected.
+		Foreground(lipgloss.Color("229")).
+		Background(lipgloss.Color("57")).
+		Bold(false)
+	m.cardTable.SetStyles(s)
 
 	return nil
 }
@@ -173,7 +194,7 @@ func (m *model) View() string {
 	}
 
 	if m.currentView == "cardDetails" {
-		return m.cardTable.View() + "\nPress b to go back."
+		return lipgloss.NewStyle().BorderStyle(lipgloss.NormalBorder()).Render(m.cardTable.View()) + "\nPress b to go back."
 	}
 
 	helpText := "\nPress Enter to view details, b to go back, q to quit."
