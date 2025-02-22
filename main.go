@@ -90,7 +90,7 @@ type listItem struct {
 	Space Space
 }
 
-func (i listItem) FilterValue() string { return i.Space.Name }
+func (i listItem) FilterValue() string { return i.Space.Name } // Use Name for filtering
 func (i listItem) Title() string       { return i.Space.Name }
 func (i listItem) Description() string {
 	return fmt.Sprintf("https://kinopio.club/%s", i.Space.Url)
@@ -156,7 +156,7 @@ func main() {
 	l := list.New([]list.Item{}, itemDelegate, 0, 0) // Start with zero size, we'll adjust it later
 	l.Title = "Spaces"
 	l.SetShowStatusBar(false)
-	l.SetFilteringEnabled(false)
+	l.SetFilteringEnabled(true) // Enable filtering for fuzzy search
 
 	sp := spinner.New(spinner.WithSpinner(spinner.Dot))
 
