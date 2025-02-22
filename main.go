@@ -27,10 +27,11 @@ type model struct {
 }
 
 type Card struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-	X    int    `json:"x"`
-	Y    int    `json:"y"`
+	ID              string `json:"id"`
+	Name            string `json:"name"`
+	X               int    `json:"x"`
+	Y               int    `json:"y"`
+	BackgroundColor string `json:"backgroundColor"` // Add backgroundColor field
 }
 
 type Box struct {
@@ -151,21 +152,25 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *model) showCardDetails() tea.Cmd {
 	columns := []table.Column{
-		{Title: "Field", Width: 10},
-		{Title: "Value", Width: 30},
+		{Title: "Field", Width: 15},
+		{Title: "Value", Width: 65},
 	}
+
+	// Use lipgloss to apply the background color to the cell
+	bgColorStyle := lipgloss.NewStyle().Background(lipgloss.Color(m.selectedCard.BackgroundColor)).Render(" ")
 
 	rows := []table.Row{
 		{"name", m.selectedCard.Name},
 		{"x", fmt.Sprintf("%d", m.selectedCard.X)},
 		{"y", fmt.Sprintf("%d", m.selectedCard.Y)},
+		{"backgroundColor", bgColorStyle},
 	}
 
 	m.cardTable = table.New(
 		table.WithColumns(columns),
 		table.WithRows(rows),
 		table.WithFocused(true),
-		table.WithHeight(6),
+		table.WithHeight(8),
 	)
 
 	// Apply styles
