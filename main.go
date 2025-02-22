@@ -156,8 +156,14 @@ func (m *model) showCardDetails() tea.Cmd {
 		{Title: "Value", Width: 65},
 	}
 
+	// Determine the background color to use
+	bgColor := m.selectedCard.BackgroundColor
+	if bgColor == "" {
+		bgColor = "#e3e3e3" // Default color if none is specified
+	}
+
 	// Use lipgloss to apply the background color to the cell
-	bgColorStyle := lipgloss.NewStyle().Background(lipgloss.Color(m.selectedCard.BackgroundColor)).Render(" ")
+	bgColorStyle := lipgloss.NewStyle().Background(lipgloss.Color(bgColor)).Render(bgColor)
 
 	rows := []table.Row{
 		{"name", m.selectedCard.Name},
