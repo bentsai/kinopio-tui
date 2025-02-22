@@ -156,10 +156,9 @@ func (m *model) showCardDetails() tea.Cmd {
 	}
 
 	rows := []table.Row{
-		{"ID", m.selectedCard.ID},
-		{"Name", m.selectedCard.Name},
-		{"X", fmt.Sprintf("%d", m.selectedCard.X)},
-		{"Y", fmt.Sprintf("%d", m.selectedCard.Y)},
+		{"name", m.selectedCard.Name},
+		{"x", fmt.Sprintf("%d", m.selectedCard.X)},
+		{"y", fmt.Sprintf("%d", m.selectedCard.Y)},
 	}
 
 	m.cardTable = table.New(
