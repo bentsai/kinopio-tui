@@ -64,22 +64,22 @@ Set FontSize 32
 Set Width 2000
 Set Height 1200
 
-Type "go run main.go" Sleep 500ms  Enter
+Type "go run main.go" Sleep 200ms  Enter
 
-Sleep 5s
+Sleep 8s
 
-Type "j" Sleep 1s
-Type "k" Sleep 2s
-Enter
-
-Sleep 3s
-
-Enter
-
-Sleep 2s
-Type "j" Sleep 1500ms
 Type "j" Sleep 2s
+Type "k" Sleep 4s
+Enter
+
+Sleep 6s
 
 Enter
 
-Sleep 5s
+Sleep 4s
+Type "j" Sleep 3s
+Type "j" Sleep 4s
+
+Enter
+
+Sleep 10s
