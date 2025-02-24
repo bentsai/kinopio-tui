@@ -61,24 +61,25 @@ Require echo
 
 Set Shell "bash"
 Set FontSize 32
-Set Width 1200
+Set Width 2000
 Set Height 1200
 
 Type "go run main.go" Sleep 500ms  Enter
 
 Sleep 5s
 
-Type "j" Sleep 500ms
-Type "k" Sleep 500ms
-Type "j" Sleep 500ms
+Type "j" Sleep 1s
+Type "k" Sleep 2s
 Enter
 
 Sleep 3s
 
 Enter
 
-Sleep 3s
+Sleep 2s
+Type "j" Sleep 1500ms
+Type "j" Sleep 2s
 
 Enter
 
-Sleep 3s
+Sleep 5s
