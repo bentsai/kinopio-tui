@@ -69,6 +69,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.selectedSpace = msg.Space
 		m.loading = false
 		m.currentView = "details"
+		m.list.Title = msg.Space.Name
 		detailItems := []list.Item{
 			detailListItem{"Cards", fmt.Sprintf("%d cards", len(msg.Space.Cards))},
 			detailListItem{"Boxes", fmt.Sprintf("%d boxes", len(msg.Space.Boxes))},
@@ -92,6 +93,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else if m.currentView == "details" {
 				if item, ok := m.list.SelectedItem().(detailListItem); ok && item.title == "Cards" {
 					m.currentView = "cards"
+					m.list.Title = m.selectedSpace.Name + " → Cards"
 					cardItems := make([]list.Item, len(m.selectedSpace.Cards))
 					for i, card := range m.selectedSpace.Cards {
 						cardItems[i] = cardListItem{card}
@@ -108,6 +110,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "b":
 			if m.currentView == "details" {
 				m.currentView = "list"
+				m.list.Title = "Spaces"
 				items := make([]list.Item, len(m.spaces))
 				for i, space := range m.spaces {
 					items[i] = listItem{space}
@@ -115,6 +118,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.list.SetItems(items)
 			} else if m.currentView == "cards" {
 				m.currentView = "details"
+				m.list.Title = m.selectedSpace.Name
 				detailItems := []list.Item{
 					detailListItem{"Cards", fmt.Sprintf("%d cards", len(m.selectedSpace.Cards))},
 					detailListItem{"Boxes", fmt.Sprintf("%d boxes", len(m.selectedSpace.Boxes))},
